@@ -1,5 +1,3 @@
-
-
 #include <iostream>
 #include <fstream>
 #include <cstdio>
@@ -8,17 +6,17 @@
 #include <png.h>
 #include <errno.h>
 
-#include "framework/xorg.hpp"
-#include "framework/controller.hpp"
+#include "framework/include/x11_screenshot_maker.hpp"
+#include "framework/include/controller.hpp"
 
 
 int main()
 {
 
     Controller core;
-    Xorg x11;
+    X11ScreenshotMaker x11;
     core.session_definition();
-    core.session_init(&x11);
+    core.session_initialize(&x11);
     core.session_make_screenshot();
     core.save_screenshot_png();
 
