@@ -8,6 +8,11 @@
 
 #include "i_screenshot_maker.hpp"
 
+#define IS_DEBUG true
+
+#if IS_DEBUG
+#define PRINT_ERROR(func_name) std::cerr << "ERROR::X11ScreenshotMaker::" << func_name << "::Line->" << __LINE__ << std::endl;
+#endif
 
 class X11ScreenshotMaker : public IScreenshotMaker
 {
@@ -21,7 +26,9 @@ public:
     unsigned short* get_display_height();
 
 private:
+    #if IS_DEBUG
     void _check_img_ptr();
+    #endif
 
     Display         *m_display = nullptr;
     int              m_screen;
