@@ -9,7 +9,6 @@
 #include "i_screenshot_maker.hpp"
 
 
-
 class X11ScreenshotMaker : public IScreenshotMaker
 {
 public:
@@ -25,8 +24,8 @@ private:
     void _check_img_ptr();
 
     Display         *m_display = nullptr;
-    int             m_screen;
+    int              m_screen;
     XImage          *m_image = nullptr;
-    unsigned short  m_display_height = 0;
-    unsigned short  m_display_width = 0;
+    unsigned short   m_display_height = 0;
+    unsigned short   m_display_width = 0;
 };

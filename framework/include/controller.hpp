@@ -23,7 +23,7 @@ public:
     unsigned short* get_display_height();
 
 private:
-    bool                m_is_wayland_session = 0;
+    bool                 m_is_wayland_session = 0;
     IScreenshotMaker    *m_i_screenshot_maker = nullptr;
     unsigned short      *m_display_width = nullptr;
     unsigned short      *m_display_height = nullptr;
