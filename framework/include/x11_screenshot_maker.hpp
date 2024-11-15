@@ -1,18 +1,17 @@
 #pragma once
 
 #include <iostream>
-#include <fstream>
-#include <cstdio>
-
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 #include "i_screenshot_maker.hpp"
 
-#define IS_DEBUG true
-
-#if IS_DEBUG
-#define PRINT_ERROR(func_name) std::cerr << "ERROR::X11ScreenshotMaker::" << func_name << "::Line->" << __LINE__ << std::endl;
-#endif
+#undef CLASS_NAME
+#define CLASS_NAME "X11ScreenshotMaker"
+#define PRINT_LINE std::cerr << "Line->" << __LINE__ << '\n';
+#define PRINT_FUNC std::cerr << "Function: " << __func__ << ' ';
+#define PRINT_ERROR_MESSAGE(m) std::cerr << "ERROR::" << m << ' '; 
+#define PRINT_DEBUG_ERROR PRINT_ERROR_MESSAGE(CLASS_NAME) PRINT_FUNC PRINT_LINE
 
 class X11ScreenshotMaker : public IScreenshotMaker
 {
@@ -21,18 +20,26 @@ public:
     void            make_screenshot();
 
     char*           get_screenshot_data();
-    int*            get_screenshot_row_bytecount();
-    unsigned short* get_display_width();
-    unsigned short* get_display_height();
+    int             get_screenshot_row_bytecount();
+    unsigned short  get_display_width();
+    unsigned short  get_display_height();
+
+    void            set_key(int key);
+    void            set_key_coombination(unsigned int mask, int key);
 
 private:
-    #if IS_DEBUG
     void _check_img_ptr();
-    #endif
+    inline void _key_waiting_loop();
 
-    Display         *m_display = nullptr;
+
+
+    Window          m_root_window;
+    XEvent          m_event;
+    //int* m_ar_
+
+    XImage*          m_image = nullptr;
+    Display*         m_display = nullptr;
     int              m_screen;
-    XImage          *m_image = nullptr;
-    unsigned short   m_display_height = 0;
     unsigned short   m_display_width = 0;
+    unsigned short   m_display_height = 0;
 };

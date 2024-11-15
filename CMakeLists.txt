@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(CaptureIt)
 
+add_compile_options( -O1 -msse3 -mpopcnt)
+
 set(APP "App")
 set(X11SM "X11ScreenshotMaker")
 set(ISM "IScreenshotMaker")
