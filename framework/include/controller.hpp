@@ -2,7 +2,6 @@
 
 #include <iostream>
 #include <cstring>
-#include <unordered_map>
 
 #include "i_screenshot_maker.hpp"
 #include "simple_png.hpp"
@@ -29,18 +28,16 @@ public:
     unsigned short get_display_height();
 
 private:
+    void _cpu_sse_check();
+    
     struct Resolution
     {
         unsigned short  width = 0;
         unsigned short  height = 0;
     }; 
 
-    void _cpu_sse_check();
-
     IScreenshotMaker*    m_i_screenshot_maker = nullptr;
     Resolution           m_display_res;
     bool                 m_is_wayland_session = false;
     bool                 m_have_sse_instructions = false;
-
-    std::unordered_map<char, void*> m_keys_bind_funtcions;
 };

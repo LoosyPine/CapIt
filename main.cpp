@@ -59,7 +59,7 @@ void speed_test(int limit)
     // base.core.save_screenshot_png();
 
 
-    auto start = std::chrono::steady_clock::now();
+    //auto start = std::chrono::steady_clock::now();
 
     Controller core;
     X11ScreenshotMaker x11;
@@ -74,10 +74,10 @@ void speed_test(int limit)
 
     auto end = std::chrono::steady_clock::now();
     //auto prog_end = std::chrono::steady_clock::now();
-    std::cout << "Core_Time:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+    //std::cout << "Core_Time:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
     //std::cout << "Prog_Time:" << std::chrono::duration_cast<std::chrono::milliseconds>(prog_end - prog_start).count() << std::endl;
-    std::cout << "\n";
-    std::cout << sizeof(unsigned short) << std::endl;
+    //std::cout << "\n";
+    //std::cout << sizeof(unsigned short) << std::endl;
 }
 
 int main()

@@ -10,24 +10,15 @@ void X11ScreenshotMaker::initialize()
     }
     
     this->m_screen = XDefaultScreen(this->m_display);
+    this->m_root_window = XDefaultRootWindow(this->m_display);
     this->m_display_height = XDisplayHeight(this->m_display, this->m_screen);
     this->m_display_width = XDisplayWidth(this->m_display, this->m_screen);
 }
 
 void X11ScreenshotMaker::make_screenshot()
 {
-    int y = XKeysymToKeycode(this->m_display, XK_Y);
-    this->m_root_window = XDefaultRootWindow(this->m_display);
     XGrabKey(this->m_display,
-            y,
-            ControlMask,
-            this->m_root_window,
-            false,
-            GrabModeAsync,
-            GrabModeAsync);
-
-    XGrabKey(this->m_display,
-            XKeysymToKeycode(this->m_display, XK_N),
+            XKeysymToKeycode(this->m_display, XK_Y),
             ControlMask,
             this->m_root_window,
             false,
@@ -49,12 +40,10 @@ void X11ScreenshotMaker::make_screenshot()
 inline void X11ScreenshotMaker::_key_waiting_loop()
 {
     XNextEvent(this->m_display, &this->m_event);
-    std::cout << this->m_event.xkey.keycode << '\n';
     while(true)
     {
         if(this->m_event.type == KeyPress)
         {
-            //std::cout << XK_Y << '\n';
             break;
         }
     }

@@ -35,8 +35,6 @@ private:
 
     Window          m_root_window;
     XEvent          m_event;
-    //int* m_ar_
-
     XImage*          m_image = nullptr;
     Display*         m_display = nullptr;
     int              m_screen;
