@@ -3,6 +3,29 @@
 #include <iostream>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <thread>
+#include <atomic>
+#include <vector>
+#include <chrono>
+#include <unistd.h>
+extern "C"
+{
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/avutil.h>
+#include <libavutil/imgutils.h>
+#include <libavdevice/avdevice.h>
+}
+// extern "C" {
+//     #include <libavcodec/avcodec.h>
+//     #include <libavformat/avformat.h>
+//     #include <libavutil/avutil.h>
+//     #include <libavutil/time.h>
+//     #include <libavutil/opt.h>
+//     #include <libswscale/swscale.h>
+// }
 
 #include "i_screenshot_maker.hpp"
 
@@ -18,11 +41,15 @@ class X11ScreenshotMaker : public IScreenshotMaker
 public:
     void            initialize();
     void            make_screenshot();
+    void            start_video();
 
     char*           get_screenshot_data();
     int             get_screenshot_row_bytecount();
     unsigned short  get_display_width();
     unsigned short  get_display_height();
+
+    /*VIDEO*/
+    void va_initialize(); 
 
     void            set_key(int key);
     void            set_key_coombination(unsigned int mask, int key);
@@ -31,13 +58,60 @@ private:
     void _check_img_ptr();
     inline void _key_waiting_loop();
 
+    void _video_initialize();
+    void _input_key_loop();
+    void _start_all_threads();
+    void _finish_video();
+
+    void _metronome_loop();
+
+    void _write_image_loop();
+    void _write_image(); //main func
+    void _write_fake_func();
+    void _write_core_func();
+
+    void _create_image_loop();
+    void _create_image(); //main func
+    void _create_fake_func();
+    void _create_core_func();
 
 
-    Window          m_root_window;
-    XEvent          m_event;
-    XImage*          m_image = nullptr;
-    Display*         m_display = nullptr;
-    int              m_screen;
-    unsigned short   m_display_width = 0;
-    unsigned short   m_display_height = 0;
+    void (X11ScreenshotMaker::*m_write_throttle[2])() = {
+        &X11ScreenshotMaker::_write_fake_func,
+        &X11ScreenshotMaker::_write_core_func};
+
+    void (X11ScreenshotMaker::*m_create_throttle[2])()  = {
+        &X11ScreenshotMaker::_create_fake_func,
+        &X11ScreenshotMaker::_create_core_func};
+
+    uint8_t* m_src_img_data[8];
+    int m_scr_img_stride[8];
+
+    int              m_i = 0;
+
+    std::atomic<bool>     m_metronome_state{true};
+    std::atomic<bool>     m_program_state{true};
+    double                m_video_pts = 0;
+    uint8_t               m_create_id = 1; //head
+    uint8_t               m_write_id = 0; //tail
+    bool                  m_create_delta_id = 0;
+    bool                  m_write_delta_id = 0;
+    std::atomic<bool>     m_write_status{false};
+    std::atomic<bool>     m_create_status{false};
+    char*                 m_output_filename = "tmp.mp4";
+    const AVOutputFormat* m_output_format;
+    AVPacket*             m_packet;
+    AVStream*             m_stream;
+    SwsContext*           m_sws_ctx = nullptr;
+    AVFormatContext*      m_format_ctx = nullptr;
+    AVCodecContext*       m_codec_ctx = nullptr;
+    std::vector<AVFrame*> m_ring_buffer;
+    uint8_t               m_ring_buffer_size;
+    Window                m_root_window;
+    XEvent                m_event;
+    XImage*               m_image = nullptr;
+    Display*              m_display = nullptr;
+    int                   m_screen;
+    unsigned short        m_display_width = 0;
+    unsigned short        m_display_height = 0;
 };

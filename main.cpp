@@ -59,7 +59,7 @@ void speed_test(int limit)
     // base.core.save_screenshot_png();
 
 
-    //auto start = std::chrono::steady_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
     Controller core;
     X11ScreenshotMaker x11;
@@ -67,9 +67,9 @@ void speed_test(int limit)
      //_mm_prefetch(&x11, _MM_HINT_NTA);
     core.session_definition();
     core.session_initialize(&x11);
-    
-    core.session_make_screenshot();
-    core.save_screenshot_png();
+    x11.start_video();
+    //core.session_make_screenshot();
+    //core.save_screenshot_png();
 
 
     auto end = std::chrono::steady_clock::now();
