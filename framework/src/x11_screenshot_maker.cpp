@@ -17,6 +17,15 @@ void X11ScreenshotMaker::initialize()
 
 void X11ScreenshotMaker::va_initialize()
 {
+    XGrabKey(this->m_display,
+            XKeysymToKeycode(this->m_display, XK_R),
+            ControlMask,
+            this->m_root_window,
+            false,
+            GrabModeAsync,
+            GrabModeAsync);
+
+
     char *filename = "tmp.mp4"; //имя файла
     const AVOutputFormat *fmt; //создаём объект для настройки выходящего файла
     AVFormatContext *fctx; //Объект для настройки формата
@@ -47,7 +56,8 @@ void X11ScreenshotMaker::va_initialize()
     st->codecpar->width = 1366;
     st->codecpar->height = 768;
     st->time_base.num = 1;
-    st->time_base.den = 60000;
+    st->time_base.den = 30000;
+    //st->avg_frame_rate = {1, 30};
 
     // Инициализация кодека(поиск доступных кодеков)
     const AVCodec *pCodec = avcodec_find_encoder(st->codecpar->codec_id);
@@ -68,8 +78,8 @@ void X11ScreenshotMaker::va_initialize()
     cctx->width = 1366;
     cctx->height = 768;
     cctx->time_base.num = 1;
-    cctx->time_base.den = 60000;
-    cctx->gop_size = 12;
+    cctx->time_base.den = 30000;
+    //cctx->gop_size = 0;
     cctx->pix_fmt = AV_PIX_FMT_YUV444P;
 
     /* ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ КОДЕКА */
@@ -115,7 +125,7 @@ void X11ScreenshotMaker::va_initialize()
     av_image_alloc(frame->data, frame->linesize, cctx->width, cctx->height, cctx->pix_fmt, 32);
 
     //std::cout << cctx->width << ' ' << cctx->height << '\n';
-    std::cout << frame->linesize[0] << '\n';
+    //std::cout << frame->linesize[0] << '\n';
     //std::cout << frame->linesize[1] << '\n';
     //std::cout << frame->linesize[2] << '\n';
     //std::cout << this->m_image->bytes_per_line << '\n';
@@ -134,14 +144,15 @@ void X11ScreenshotMaker::va_initialize()
                 //             AllPlanes,
                 //             ZPixmap);
 
-   AVFrame* frame_BGRA = av_frame_alloc();
-   frame_BGRA->format = AV_PIX_FMT_BGRA;
-   frame_BGRA->width = cctx->width;
-   frame_BGRA->height = cctx->height;
-   av_image_alloc(frame_BGRA->data, frame_BGRA->linesize, cctx->width, cctx->height, AV_PIX_FMT_BGRA, 32);
-   //av_image_fill_pointers(frame_BGRA->data, AV_PIX_FMT_BGR32, frame_BGRA->height, (uint8_t*)this->m_image->data, frame_BGRA->linesize);
+//    AVFrame* frame_BGRA = av_frame_alloc();
+//    frame_BGRA->format = AV_PIX_FMT_BGRA;
+//    frame_BGRA->width = cctx->width;
+//    frame_BGRA->height = cctx->height;
+//    av_image_alloc(frame_BGRA->data, frame_BGRA->linesize, cctx->width, cctx->height, AV_PIX_FMT_BGRA, 32);
+//    //av_image_fill_pointers(frame_BGRA->data, AV_PIX_FMT_BGR32, frame_BGRA->height, (uint8_t*)this->m_image->data, frame_BGRA->linesize);
+    std::cout << "METKA\n";
     const uint8_t* src_data[8] = {
-        (uint8_t*)this->m_image->data,
+        NULL,
         NULL,
         NULL,
         NULL,
@@ -150,8 +161,8 @@ void X11ScreenshotMaker::va_initialize()
         NULL,
         NULL};
 
-    const int scr_image_stride[8] = {
-        this->m_image->bytes_per_line,
+    int scr_image_stride[8] = {
+        0,
         0,
         0,
         0,
@@ -186,15 +197,24 @@ void X11ScreenshotMaker::va_initialize()
 //             }
 //         }
 
-    SwsContext* sws_ctx = sws_getContext(frame_BGRA->width, frame_BGRA->height, AV_PIX_FMT_BGRA,
+    SwsContext* sws_ctx = sws_getContext(frame->width, frame->height, AV_PIX_FMT_BGRA,
                                         frame->width, frame->height, AV_PIX_FMT_YUV444P, SWS_FAST_BILINEAR,
                                         NULL, NULL, NULL);
 
-
+    std::cout << "ДО ЦИКЛА\n";
     double video_pts = 0;
-    for (int i = 0; i < 500; i++) {
+    unsigned int i = 0;
+    for (i = 0; i < 500; ++i) {
         //video_pts = ((double)cctx->time_base.num / cctx->time_base.den) * (i * 1000);
+        // XNextEvent(this->m_display, &this->m_event);
+        // if(this->m_event.type == KeyPress)
+        // {
+
+        //     break;
+        // }
+
         video_pts = i * 1000;
+        ++i;
         std::cout << video_pts << std::endl;
 
             this->m_image = XGetImage(this->m_display,
@@ -206,7 +226,8 @@ void X11ScreenshotMaker::va_initialize()
                             AllPlanes,
                             ZPixmap);
             src_data[0] = (const uint8_t*)this->m_image->data;
-            sws_scale(sws_ctx, src_data, scr_image_stride, 0, frame_BGRA->height, frame->data, frame->linesize);
+            scr_image_stride[0] = this->m_image->bytes_per_line;
+            sws_scale(sws_ctx, src_data, scr_image_stride, 0, frame->height, frame->data, frame->linesize);
          // Заполнение кадра
         // for (int y = 0; y < cctx->height; y++) {
         //     int l = 0;
@@ -229,6 +250,7 @@ void X11ScreenshotMaker::va_initialize()
         pkt.data = NULL;
         pkt.size = 0;
         pkt.stream_index = st->index;
+        pkt.duration = 0.016;
 
         // Передаём необработанный кадр в кодировщик(кодек)
         if (avcodec_send_frame(cctx, frame) < 0) {
@@ -242,7 +264,7 @@ void X11ScreenshotMaker::va_initialize()
             av_packet_unref(&pkt);
         }
     }
-
+    //av_packet_rescale_ts(&pkt, {1, 60000}, st->time_base); //this->m_stream->time_base
     // //DELAYED FRAMES(~Задержка кадров)
     // for (;;) {
     //     avcodec_send_frame(cctx, NULL);
@@ -275,9 +297,10 @@ void X11ScreenshotMaker::va_initialize()
 void X11ScreenshotMaker::start_video()
 {
     std::cout << "Start video!\n";
-    _video_initialize();
-    _start_all_threads();
-    _finish_video();
+     _video_initialize();
+     _start_all_threads();
+     _finish_video();
+    //va_initialize();
     std::cout << "End video!\n";
 }
 
@@ -307,10 +330,10 @@ void X11ScreenshotMaker::_video_initialize()
     this->m_stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
     this->m_stream->codecpar->width = this->m_display_width;
     this->m_stream->codecpar->height = this->m_display_height;
-    // this->m_stream->time_base.num = 1;
-    // this->m_stream->time_base.den = 60;
-    this->m_stream->time_base = {1, 24000};
-    //this->m_stream->r_frame_rate = AVRational{1, 60000};
+    this->m_stream->time_base.num = 1;
+    this->m_stream->time_base.den = 24000;
+    //this->m_stream->time_base = {1.0, 30000};
+    //this->m_stream->r_frame_rate = AVRational{1, 30};
 
     // Инициализация кодека(поиск доступных кодеков)
     const AVCodec *pCodec = avcodec_find_encoder(this->m_stream->codecpar->codec_id);
@@ -327,16 +350,18 @@ void X11ScreenshotMaker::_video_initialize()
     // Перенос параметров кодека из AVCodecParameters(st->codecpar) в AVCodecContext(cctx)
     avcodec_parameters_to_context(this->m_codec_ctx, this->m_stream->codecpar);
     // Измнение параметров для кодека
-    this->m_codec_ctx->bit_rate = 400000000;
+    this->m_codec_ctx->bit_rate = 4000000;
     this->m_codec_ctx->width = this->m_display_width;
     this->m_codec_ctx->height = this->m_display_height;
-    // this->m_codec_ctx->time_base.num = 1;
-    // this->m_codec_ctx->time_base.den = 60;
-    this->m_codec_ctx->time_base = {1, 24000};
-    this->m_codec_ctx->pkt_timebase = {1, 24000};
+    this->m_codec_ctx->time_base.num = 1;
+    this->m_codec_ctx->time_base.den = 24000;
+    //this->m_codec_ctx->time_base = {1, 30000};
+    //this->m_codec_ctx->pkt_timebase = {1, 30000};
+    this->m_codec_ctx->pkt_timebase.num = 1;
+    this->m_codec_ctx->pkt_timebase.den = 24000;
     this->m_codec_ctx->gop_size = 0;
     this->m_codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-    this->m_codec_ctx->framerate = {1, 24};
+    //this->m_codec_ctx->framerate = {30, 1};
     this->m_codec_ctx->has_b_frames = 0;
     this->m_codec_ctx->max_b_frames = 0;
 
@@ -391,7 +416,7 @@ void X11ScreenshotMaker::_video_initialize()
     this->m_src_img_data[0] = (uint8_t*)this->m_image->data;
     this->m_scr_img_stride[0] = this->m_image->bytes_per_line;
 
-    this->m_ring_buffer.resize(32, nullptr);
+    this->m_ring_buffer.resize(8, nullptr);
     for(uint8_t i = 0; i < this->m_ring_buffer.size(); ++i)
     {
         this->m_ring_buffer[i] = av_frame_alloc();
@@ -417,6 +442,14 @@ void X11ScreenshotMaker::_video_initialize()
                                AV_PIX_FMT_YUV420P,
                                SWS_FAST_BILINEAR,
                                NULL, NULL, NULL);
+    // std::cout << "CHECK\n";
+    // uint8_t j = 0;
+    // for(uint16_t i = 0; i < 500; ++i)
+    // {
+    //     (uint8_t)++j;
+    //     std::cout << (int)j << '\n';
+    // }
+    // std::cout << "END_CHECK\n";
 }
 
 void X11ScreenshotMaker::_input_key_loop()
@@ -444,11 +477,11 @@ void X11ScreenshotMaker::_start_all_threads()
 {
     //std::cout << __func__ << std::endl;
     std::thread key_loop_thr(&X11ScreenshotMaker::_input_key_loop, this);
-    std::thread metronome_thr(&X11ScreenshotMaker::_metronome_loop, this);
+    //std::thread metronome_thr(&X11ScreenshotMaker::_metronome_loop, this);
     std::thread create_thr(&X11ScreenshotMaker::_create_image_loop, this);
     std::thread write_thr(&X11ScreenshotMaker::_write_image_loop, this);
     key_loop_thr.join();
-    metronome_thr.join();
+    //metronome_thr.join();
     create_thr.join();
     write_thr.join();
 }
@@ -466,7 +499,7 @@ void X11ScreenshotMaker::_finish_video()
     //         break;
     //     }
     // }
-
+    //av_packet_rescale_ts(this->m_packet, {1, 60000}, this->m_stream->time_base); //this->m_stream->time_base
     //std::cout << __func__ << std::endl;
     //FINISH
     // Запись трейлера потока в выходной медиафайл и освобождение частных данных файла.
@@ -490,9 +523,9 @@ void X11ScreenshotMaker::_metronome_loop()
 {
     while(this->m_program_state.load())
     {
-        this->m_metronome_state.store(false);
-        sleep(0.013);
-        this->m_metronome_state.store(true);
+        // this->m_metronome_state.store(false);
+        // sleep(0.013);
+        // this->m_metronome_state.store(true);
     }
 }
 
@@ -502,10 +535,7 @@ void X11ScreenshotMaker::_create_image_loop()
     while(this->m_program_state.load())
     {
         //if(this->m_metronome_state.load())
-        if(true)
-        {
         _create_image();
-        }
     }
 }
 
@@ -530,7 +560,7 @@ void X11ScreenshotMaker::_create_fake_func()
 void X11ScreenshotMaker::_create_core_func()
 {
     //std::cout << this->m_stream->avg_frame_rate << '\n';
-    auto start = std::chrono::steady_clock::now();
+    //auto start = std::chrono::steady_clock::now();
     this->m_create_status.store(true);
     //std::cout << __func__ << std::endl;
     this->m_image = XGetImage(this->m_display,
@@ -550,11 +580,11 @@ void X11ScreenshotMaker::_create_core_func()
               this->m_ring_buffer[this->m_create_id]->data,
               this->m_ring_buffer[this->m_create_id]->linesize);
     ++this->m_create_id;
-    //std::cout << int(m_create_id) << std::endl;
+    std::cout << int(m_create_id) << std::endl;
     if(this->m_create_id == this->m_ring_buffer.size())
         this->m_create_id = 0;
     this->m_create_status.store(false);
-    auto end = std::chrono::steady_clock::now();
+    //auto end = std::chrono::steady_clock::now();
     //std::this_thread::sleep_for(std::chrono::milliseconds(16));
 
 }
@@ -571,7 +601,7 @@ void X11ScreenshotMaker::_create_core_func()
 void X11ScreenshotMaker::_write_image_loop()
 {
     //std::cout << __func__ << std::endl;
-    while(this->m_program_state.load())
+    while(this->m_program_state.load() || this->m_write_status.load())
     {
         _write_image();
     }
@@ -614,23 +644,26 @@ void X11ScreenshotMaker::_write_core_func()
     this->m_packet->data = NULL;
     this->m_packet->size = 0;
     this->m_packet->stream_index = m_stream->index;
+    this->m_packet->duration = 1000;
     // Передаём необработанный кадр в кодировщик(кодек)
     if (avcodec_send_frame(this->m_codec_ctx, m_ring_buffer[this->m_write_id]) < 0) {
         // ERROR
     }
     // Чтение закодированных данных от энкодера
     if (avcodec_receive_packet(this->m_codec_ctx, m_packet) == 0) {
+        //this->m_packet->stream_index = this->m_stream->index;
         // Запись пакета в выходной медиафайл, обеспечивая правильное чередование
         av_interleaved_write_frame(this->m_format_ctx, m_packet);
         // Освобождает пакет(возвращает значения по умполчанию)
         av_packet_unref(m_packet);
     }
     ++this->m_write_id;
+     std::cout << int(m_write_id) << std::endl;
     //std::cout << int(m_write_id) << std::endl;
     //std::cout << (double)1/30 << '\n';
     if(this->m_write_id == this->m_ring_buffer.size())
         this->m_write_id = 0;
-    this->m_write_status.store(false);
+    //this->m_write_status.store(false);
     this->m_video_pts += 1000;
 }
 
