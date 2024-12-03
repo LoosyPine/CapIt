@@ -92,7 +92,7 @@ private:
     std::atomic<bool>     m_metronome_state{true};
     std::atomic<bool>     m_program_state{true};
     double                m_video_pts = 0;
-    uint8_t               m_create_id = 1; //head
+    uint8_t               m_create_id = 2; //head
     uint8_t               m_write_id = 0; //tail
     bool                  m_create_delta_id = 0;
     bool                  m_write_delta_id = 0;
