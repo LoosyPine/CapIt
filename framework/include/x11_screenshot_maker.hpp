@@ -6,6 +6,7 @@
 #include <sys/shm.h>
 #include <sys/mman.h>
 #include <xcb/xproto.h>
+//#include <xcb/xinerama.h>
 #include <thread>
 #include <atomic>
 #include <vector>
@@ -91,7 +92,7 @@ private:
     std::atomic<bool>     m_metronome_state{true};
     std::atomic<bool>     m_program_state{true};
     double                m_video_pts = 0;
-    uint8_t               m_create_id = 2; //head
+    uint8_t               m_create_id = 1; //head
     uint8_t               m_write_id = 0; //tail
     bool                  m_create_delta_id = 0;
     bool                  m_write_delta_id = 0;
@@ -114,28 +115,8 @@ private:
     unsigned short        m_display_width = 0;
     unsigned short        m_display_height = 0;
 
-    // //xcb
-    // xcb_connection_t* connection = nullptr;
-    // xcb_window_t root;
-    // uint16_t width = 0;
-    // uint16_t height = 0;
-    // xcb_get_geometry_reply_t* geometry = nullptr; 
-    // xcb_shm_get_image_reply_t* xcb_image = nullptr;
-    // xcb_shm_seg_t* shmseg = nullptr;
-    // xcb_shm_create_segment_reply_t* shm_reply = nullptr;
-    // void* shmem = nullptr;
-    // const int SHM_SIZE = 4 * 1024 * 1024;
 
-    // void _xcb_init();
-
-    // void _xcb_make_screenshot();
-
-    // uint8_t* _xcb_get_data();
-
-    // int _xcb_get_linesize();
-
-
-    //normal xcb-shm
+    //xcb-shm
     xcb_connection_t* m_connection = nullptr;
     const xcb_setup_t* m_setup = nullptr;
     xcb_screen_t* m_xcb_screen = nullptr;
@@ -143,46 +124,8 @@ private:
     int m_shmid = 0;
     xcb_shm_get_image_cookie_t m_cookie;
     uint8_t* m_buffer = nullptr;
-    //xcb_shm_get_image_reply_t* m_xcb_image = nullptr;
 
-
-    void _xcb_shm_inittialize()
-    {
-        this->m_connection = xcb_connect(nullptr, nullptr);
-        if (xcb_connection_has_error(this->m_connection)) 
-        {
-            /* do something on error*/
-            std::cerr << "ERROR\n";
-            exit(0);
-        }
-
-        this->m_setup = xcb_get_setup(this->m_connection);
-        this->m_xcb_screen = xcb_setup_roots_iterator(this->m_setup).data;
-        this->m_seg = xcb_generate_id(this->m_connection);
-
-        this->m_shmid = shmget(IPC_PRIVATE, 1366 * 768 * 4, IPC_CREAT | 0777);
-        if (this->m_shmid == -1)
-        {
-            /* do something on error*/
-            std::cerr << "ERROR\n";
-            exit(0);
-        }
-
-        xcb_shm_attach(this->m_connection, this->m_seg, this->m_shmid, false);
-
-        this->m_buffer = static_cast<uint8_t*>(shmat(this->m_shmid, nullptr, 0));
-    }
-
-    void _xcb_shm_create_image()
-    {
-        this->m_cookie = xcb_shm_get_image_unchecked(this->m_connection, this->m_xcb_screen->root, 0, 0, 1366,
-                                             768, ~0,
-                                             XCB_IMAGE_FORMAT_Z_PIXMAP, this->m_seg, 0);
-                                             
-        //this->m_xcb_image = xcb_shm_get_image_reply(this->m_connection, this->m_cookie, nullptr);
-        //xcb_flush(this->m_connection);
-        //std::cout << *m_buffer << '\n';
-        free(xcb_shm_get_image_reply(this->m_connection, this->m_cookie, nullptr));
-    }
+    void _xcb_shm_inittialize();
+    void _xcb_shm_create_image();
 
 };
