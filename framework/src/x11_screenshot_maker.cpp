@@ -29,6 +29,9 @@ void X11ScreenshotMaker::start_video()
 
 void X11ScreenshotMaker::_video_initialize()
 {
+    _xcb_shm_inittialize();
+/////////////////////////////
+
     //инициализирует libavdevice и регистрирует все входные и выходные устройства.
     avdevice_register_all();
 
@@ -119,7 +122,10 @@ void X11ScreenshotMaker::_video_initialize()
                               this->m_display_height,
                               AllPlanes,
                               ZPixmap);
-    this->m_src_img_data[0] = (uint8_t*)this->m_image->data;
+
+    //_xcb_shm_create_image();
+
+    this->m_src_img_data[0] = this->m_buffer;
     this->m_scr_img_stride[0] = this->m_image->bytes_per_line;
 
     this->m_ring_buffer.resize(3, nullptr);
@@ -146,6 +152,8 @@ void X11ScreenshotMaker::_video_initialize()
                                AV_PIX_FMT_YUV420P,
                                SWS_FAST_BILINEAR,
                                NULL, NULL, NULL);
+
+    this->m_packet = av_packet_alloc();
 }
 
 void X11ScreenshotMaker::_input_key_loop()
@@ -220,15 +228,18 @@ void X11ScreenshotMaker::_create_fake_func()
 void X11ScreenshotMaker::_create_core_func()
 {
     this->m_create_status.store(true);
-    this->m_image = XGetImage(this->m_display,
-                              this->m_root_window,
-                              0,
-                              0,
-                              this->m_display_width,
-                              this->m_display_height,
-                              AllPlanes,
-                              ZPixmap);
-    this->m_src_img_data[0] = (uint8_t*)this->m_image->data;
+    // this->m_image = XGetImage(this->m_display,
+    //                           this->m_root_window,
+    //                           0,
+    //                           0,
+    //                           this->m_display_width,
+    //                           this->m_display_height,
+    //                           AllPlanes,
+    //                           ZPixmap);
+
+    //std::cout << sizeof(*this->m_image) << '\n';
+    _xcb_shm_create_image();
+    //this->m_src_img_data[0] = this->m_buffer;
     sws_scale(m_sws_ctx,
               this->m_src_img_data,
               this->m_scr_img_stride,
@@ -265,15 +276,15 @@ void X11ScreenshotMaker::_write_fake_func()
 void X11ScreenshotMaker::_write_core_func()
 {
     this->m_write_status.store(true);
-
+    //std::cout << sizeof(*m_ring_buffer[this->m_write_id]) << '\n';
     // Инициализация необязательных полей пакета(AVPacket) значениями по умолчанию
-    this->m_packet = av_packet_alloc();
     this->m_packet->flags |= AV_PKT_FLAG_KEY; // AV_PKT_FLAG_KEY — это флаг, который указывает, что пакет содержит ключевой кадр.
     this->m_packet->pts = this->m_ring_buffer[this->m_write_id]->pts = this->m_video_pts;
     this->m_packet->data = NULL;
     this->m_packet->size = 0;
     this->m_packet->stream_index = m_stream->index;
     this->m_packet->duration = 0;
+    //std::cout << sizeof(*this->m_packet) << '\n';
     // Передаём необработанный кадр в кодировщик(кодек)
     if (avcodec_send_frame(this->m_codec_ctx, m_ring_buffer[this->m_write_id]) < 0) {
         PRINT_DEBUG_ERROR;
@@ -303,14 +314,14 @@ void X11ScreenshotMaker::make_screenshot()
 
     _key_waiting_loop();
 
-    this->m_image = XGetImage(this->m_display,
-                            DefaultRootWindow(this->m_display),
-                            0,
-                            0,
-                            this->m_display_width,
-                            this->m_display_height,
-                            AllPlanes,
-                            ZPixmap);
+    // this->m_image = XGetImage(this->m_display,
+    //                         DefaultRootWindow(this->m_display),
+    //                         0,
+    //                         0,
+    //                         this->m_display_width,
+    //                         this->m_display_height,
+    //                         AllPlanes,
+    //                         ZPixmap);
 }
 
 inline void X11ScreenshotMaker::_key_waiting_loop()
@@ -355,3 +366,57 @@ void X11ScreenshotMaker::_check_img_ptr()
         exit(EXIT_FAILURE);
     }
 }
+
+
+    // void X11ScreenshotMaker::_xcb_init()
+    // {
+    //     this->connection = xcb_connect(nullptr, nullptr);
+    //     if (!this->connection) {
+    //         std::cerr << "failed to connect to X server\n";
+    //     } 
+    //     this->root = xcb_setup_roots_iterator(xcb_get_setup(this->connection)).data->root;
+    //     this->geometry = xcb_get_geometry_reply(this->connection, xcb_get_geometry(this->connection, this->root), nullptr);
+    //     this->width = geometry->width;
+    //     this->height = geometry->height;
+    //     *this->shmseg = xcb_generate_id(this->connection);
+    //     this->shm_reply = xcb_shm_create_segment_reply(this->connection, xcb_shm_create_segment(this->connection, *this->shmseg, SHM_SIZE, 0), nullptr);
+    //     auto fds = xcb_shm_create_segment_reply_fds(this->connection, this->shm_reply);
+    //    // spdlog::info("found {} fds", this->shm_reply->nfd);
+    //     // for (int i = 0; i < shm_reply->nfd; i++)
+    //     // {
+    //     //     auto err = xcb_request_check(this->connection, xcb_shm_attach_fd(this->connection, *this->shmseg, fds[i], true));
+    //     //     // if (err) {
+    //     //     //     spdlog::error("failed to attach fd: {}", fds[i]);
+    //     //     //     delete err;
+    //     //     // }
+    //     // }
+    //     this->shmem = mmap(nullptr, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fds[0], 0);
+    // }
+
+    // void X11ScreenshotMaker::_xcb_make_screenshot()
+    // {
+    //     //this->xcb_image = xcb_get_image_reply(this->connection, xcb_get_image(this->connection, XCB_IMAGE_FORMAT_Z_PIXMAP, this->root, 0, 0, this->width, this->height, static_cast<uint32_t>(~0)), nullptr);
+    //     this->xcb_image = xcb_shm_get_image_reply(this->connection, xcb_shm_get_image_unchecked(this->connection,
+    //                           this->root,
+    //                           0,
+    //                           0,
+    //                           this->width,
+    //                           this->height,
+    //                           static_cast<uint32_t>(~0),
+    //                           XCB_IMAGE_FORMAT_Z_PIXMAP,
+    //                           *this->shmseg,
+    //                           0), nullptr);
+    // }
+
+    // uint8_t* X11ScreenshotMaker::_xcb_get_data()
+    // {
+    //     //return xcb_shm_get_image_data(this->xcb_image);
+    //     return (uint8_t*)this->shmem;
+    // }
+
+    // int X11ScreenshotMaker::_xcb_get_linesize()
+    // {
+    //     //return xcb_shm_get_image_data_length(this->xcb_image);
+        
+    //     return xcb_image->size;
+    // }
