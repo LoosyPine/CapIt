@@ -22,35 +22,35 @@ void Controller::session_definition()
 
 void Controller::session_initialize(IMultimediaCentre *i_screenshot_maker)
 {
-    this->m_i_screenshot_maker = i_screenshot_maker;
-    this->m_i_screenshot_maker->initialize();
+    this->m_i_multimedia_centre = i_screenshot_maker;
+    this->m_i_multimedia_centre->initialize();
 
-    this->m_display_res.width = this->m_i_screenshot_maker->get_display_width();
-    this->m_display_res.height = this->m_i_screenshot_maker->get_display_height();
+    this->m_display_res.width = this->m_i_multimedia_centre->get_display_width();
+    this->m_display_res.height = this->m_i_multimedia_centre->get_display_height();
 }
 
 
 void Controller::session_make_screenshot()
 {
-    if(this->m_i_screenshot_maker == nullptr)
+    if(this->m_i_multimedia_centre == nullptr)
     {
         PRINT_DEBUG_ERROR;
         exit(EXIT_FAILURE);
     }
 
-    this->m_i_screenshot_maker->make_screenshot();
+    this->m_i_multimedia_centre->make_screenshot();
 }
 
 
 void Controller::session_make_screenshot_right_now()
 {
-    if(this->m_i_screenshot_maker == nullptr)
+    if(this->m_i_multimedia_centre == nullptr)
     {
         PRINT_DEBUG_ERROR;
         exit(EXIT_FAILURE);
     }
 
-    this->m_i_screenshot_maker->make_screenshot_right_now();
+    this->m_i_multimedia_centre->make_screenshot_right_now();
 }
 
 
@@ -58,28 +58,40 @@ void Controller::save_screenshot_png()
 {
     SimplePNG png;
     png.initialize(this->m_display_res.width, this->m_display_res.height);                 
-    png.set_image_data(this->m_i_screenshot_maker->get_screenshot_data()); 
+    png.set_image_data(this->m_i_multimedia_centre->get_screenshot_data()); 
     png.set_image_row_bytecount(
-        this->m_i_screenshot_maker->get_screenshot_row_bytecount());
+        this->m_i_multimedia_centre->get_screenshot_row_bytecount());
     png.save_png();
 }
 
 
 void Controller::session_start_video()
 {
-    this->m_i_screenshot_maker->start_video();
+    this->m_i_multimedia_centre->start_video();
 }
 
 
 void Controller::session_forced_stop_video()
 {
-    this->m_i_screenshot_maker->stop_video();
+    this->m_i_multimedia_centre->stop_video();
+}
+
+
+void Controller::set_video_filename(char* name)
+{
+    this->m_i_multimedia_centre->set_video_filename(name);
+}
+
+
+void Controller::set_video_fps(uint16_t fps)
+{
+    this->m_i_multimedia_centre->set_video_fps(fps);
 }
 
 
 void Controller::set_trigger_key(int key,  unsigned int mask)
 {
-    this->m_i_screenshot_maker->set_trigger_key(key, mask);
+    this->m_i_multimedia_centre->set_trigger_key(key, mask);
 }
 
 

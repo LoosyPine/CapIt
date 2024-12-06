@@ -45,6 +45,8 @@ public:
     void            stop_video();
 
     void            set_trigger_key(int key,  unsigned int mask = 0);
+    void            set_video_filename(char* name);
+    void            set_video_fps(uint16_t fps);
 
     char*           get_screenshot_data();
     int             get_screenshot_row_bytecount();
@@ -113,9 +115,11 @@ private:
     xcb_shm_get_image_cookie_t  m_cookie;
     unsigned short              m_display_height = 0;
     unsigned short              m_display_width = 0;
+    uint16_t                    m_video_fps = 24;
     uint8_t                     m_create_id = 1; //head
     uint8_t                     m_write_id = 0; //tail
-    uint8_t                     m_ring_buffer_size = 0;
+    uint8_t                     m_size_of_bit_offset = 6;
+    uint8_t                     m_ring_buffer_size = 4;
     std::atomic<bool>           m_metronome_state{true};
     std::atomic<bool>           m_program_state{true};
     std::atomic<bool>           m_create_status{false};

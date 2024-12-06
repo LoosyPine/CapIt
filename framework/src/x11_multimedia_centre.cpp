@@ -2,7 +2,6 @@
 
 void X11_MultimediaCentre::_xcb_shm_inittialize()
 {
-    std::cout << (int)XKeysymToKeycode(this->m_display, XK_R) << '\n';
     this->m_connection = xcb_connect(nullptr, nullptr);
     if (xcb_connection_has_error(this->m_connection))
     {
@@ -35,6 +34,18 @@ void X11_MultimediaCentre::_xcb_shm_create_image()
                                              
     //xcb_flush(this->m_connection);
     free(xcb_shm_get_image_reply(this->m_connection, this->m_cookie, nullptr));
+}
+
+
+void X11_MultimediaCentre::set_video_filename(char* name)
+{
+    this->m_output_filename = name;
+}
+
+
+void X11_MultimediaCentre::set_video_fps(uint16_t fps)
+{
+    this->m_video_fps = fps;
 }
 
 
@@ -106,13 +117,15 @@ void X11_MultimediaCentre::_video_initialize()
         exit(EXIT_FAILURE);
     }
 
+    uint16_t time_base_den = this->m_video_fps * 1000;
+
     // Настройка параметров кодека в потоке(st)
     this->m_stream->codecpar->codec_id = this->m_output_format->video_codec;
     this->m_stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
     this->m_stream->codecpar->width = this->m_display_width;
     this->m_stream->codecpar->height = this->m_display_height;
     this->m_stream->time_base.num = 1;
-    this->m_stream->time_base.den = 30000;
+    this->m_stream->time_base.den = time_base_den;
 
     // Инициализация кодека(поиск доступных кодеков)
     const AVCodec *pCodec = avcodec_find_encoder(this->m_stream->codecpar->codec_id);
@@ -135,9 +148,9 @@ void X11_MultimediaCentre::_video_initialize()
     this->m_codec_ctx->width = this->m_display_width;
     this->m_codec_ctx->height = this->m_display_height;
     this->m_codec_ctx->time_base.num = 1;
-    this->m_codec_ctx->time_base.den = 30000;
+    this->m_codec_ctx->time_base.den = time_base_den;
     this->m_codec_ctx->pkt_timebase.num = 1;
-    this->m_codec_ctx->pkt_timebase.den = 30000;
+    this->m_codec_ctx->pkt_timebase.den = time_base_den;
     this->m_codec_ctx->gop_size = 0;
     this->m_codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
     this->m_codec_ctx->has_b_frames = 0;
@@ -175,14 +188,14 @@ void X11_MultimediaCentre::_video_initialize()
     this->m_src_img_data[0] = this->m_buffer;
     this->m_scr_img_stride[0] = this->m_image->bytes_per_line;
 
-    this->m_ring_buffer.resize(4, nullptr);
-    for(uint8_t i = 0; i < this->m_ring_buffer.size(); ++i)
+    this->m_ring_buffer.resize(this->m_ring_buffer_size, nullptr);
+    for(uint8_t i = 0; i < this->m_ring_buffer_size; ++i)
     {
         this->m_ring_buffer[i] = av_frame_alloc();
         this->m_ring_buffer[i]->format = this->m_codec_ctx->pix_fmt;
         this->m_ring_buffer[i]->width = this->m_codec_ctx->width;
         this->m_ring_buffer[i]->height = this->m_codec_ctx->height;
-        this->m_ring_buffer[i]->time_base = {1, 30000};
+        this->m_ring_buffer[i]->time_base = {1, time_base_den};
         av_image_alloc(this->m_ring_buffer[i]->data,
                        this->m_ring_buffer[i]->linesize,
                        this->m_codec_ctx->width,
@@ -190,6 +203,16 @@ void X11_MultimediaCentre::_video_initialize()
                        this->m_codec_ctx->pix_fmt,
                        32);
     }
+
+    uint8_t temp = this->m_ring_buffer_size;
+    uint8_t count_of_bits = 0;
+    while(temp != 0)
+    {
+        temp >>= 1;
+        ++count_of_bits;
+    }
+    --count_of_bits;
+    this->m_size_of_bit_offset = 8 - count_of_bits; // 8 because uint8_t
 
     m_sws_ctx = sws_getContext(this->m_ring_buffer[0]->width,
                                this->m_ring_buffer[0]->height,
@@ -283,8 +306,8 @@ void X11_MultimediaCentre::_create_core_func()
               this->m_ring_buffer[this->m_create_id]->data,
               this->m_ring_buffer[this->m_create_id]->linesize);
     ++this->m_create_id;
-    if(this->m_create_id == this->m_ring_buffer.size())
-        this->m_create_id = 0;
+    this->m_create_id <<= this->m_size_of_bit_offset;
+    this->m_create_id >>= this->m_size_of_bit_offset;
     this->m_create_status.store(false);
 }
 
@@ -334,8 +357,8 @@ void X11_MultimediaCentre::_write_core_func()
         av_packet_unref(m_packet);
     }
     ++this->m_write_id;
-    if(this->m_write_id == this->m_ring_buffer.size())
-        this->m_write_id = 0;
+    this->m_write_id <<= this->m_size_of_bit_offset;
+    this->m_write_id >>= this->m_size_of_bit_offset;
     this->m_video_pts += 1000;
 }
 

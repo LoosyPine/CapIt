@@ -26,7 +26,9 @@ public:
     bool is_wayland();
 
     void set_trigger_key(int key,  unsigned int mask = 0);
-    
+    void set_video_filename(char* name);
+    void set_video_fps(uint16_t fps);
+
     unsigned short get_display_width();
     unsigned short get_display_height();
 
@@ -40,7 +42,7 @@ private:
         unsigned short  height = 0;
     }; 
 
-    IMultimediaCentre*    m_i_screenshot_maker = nullptr;
+    IMultimediaCentre*    m_i_multimedia_centre = nullptr;
     Resolution           m_display_res;
     bool                 m_is_wayland_session = false;
     bool                 m_have_sse_instructions = false;
