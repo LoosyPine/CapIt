@@ -5,7 +5,7 @@ project(CaptureIt)
 #add_compile_options(-O1 -msse3 -mpopcnt)
 #add_compile_options(-lxcb)
 
-set(APP "App")
+set(APP "capit")
 set(X11SM "X11ScreenshotMaker")
 set(ISM "IScreenshotMaker")
 set(SIMP_PNG "SimplePNG")
