@@ -19,7 +19,8 @@ void Controller::session_definition()
     _cpu_sse_check();
 }
 
-void Controller::session_initialize(IScreenshotMaker *i_screenshot_maker)
+
+void Controller::session_initialize(IMultimediaCentre *i_screenshot_maker)
 {
     this->m_i_screenshot_maker = i_screenshot_maker;
     this->m_i_screenshot_maker->initialize();
@@ -27,6 +28,7 @@ void Controller::session_initialize(IScreenshotMaker *i_screenshot_maker)
     this->m_display_res.width = this->m_i_screenshot_maker->get_display_width();
     this->m_display_res.height = this->m_i_screenshot_maker->get_display_height();
 }
+
 
 void Controller::session_make_screenshot()
 {
@@ -39,6 +41,19 @@ void Controller::session_make_screenshot()
     this->m_i_screenshot_maker->make_screenshot();
 }
 
+
+void Controller::session_make_screenshot_right_now()
+{
+    if(this->m_i_screenshot_maker == nullptr)
+    {
+        PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
+    }
+
+    this->m_i_screenshot_maker->make_screenshot_right_now();
+}
+
+
 void Controller::save_screenshot_png()
 {
     SimplePNG png;
@@ -49,11 +64,31 @@ void Controller::save_screenshot_png()
     png.save_png();
 }
 
+
+void Controller::session_start_video()
+{
+    this->m_i_screenshot_maker->start_video();
+}
+
+
+void Controller::session_forced_stop_video()
+{
+    this->m_i_screenshot_maker->stop_video();
+}
+
+
+void Controller::set_trigger_key(int key,  unsigned int mask)
+{
+    this->m_i_screenshot_maker->set_trigger_key(key, mask);
+}
+
+
 unsigned short Controller::get_display_width()
 {
     //_mm_prefetch(&(*this->m_display_res.width), _MM_HINT_T0);
     return this->m_display_res.width;
 }
+
 
 unsigned short Controller::get_display_height()
 {       
@@ -61,10 +96,12 @@ unsigned short Controller::get_display_height()
     return this->m_display_res.height;
 }
 
+
 bool Controller::is_wayland()
 {       
     return this->m_is_wayland_session;
 }
+
 
 void Controller::_cpu_sse_check()
 {

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cstring>
 
-#include "i_screenshot_maker.hpp"
+#include "i_multimedia_centre.hpp"
 #include "simple_png.hpp"
 
 #undef CLASS_NAME
@@ -17,15 +17,19 @@ class Controller
 {
 public:
     void session_definition();
-    void session_initialize(IScreenshotMaker *i_screenshot_maker_ptr);
+    void session_initialize(IMultimediaCentre *i_screenshot_maker_ptr);
     void session_make_screenshot();
-    bool is_wayland();
+    void session_make_screenshot_right_now();
     void save_screenshot_png();
-    void set_key_and_function(char key, void (*func)());
-    void input_key_loop_start();
+    void session_start_video();
+    void session_forced_stop_video();
+    bool is_wayland();
 
+    void set_trigger_key(int key,  unsigned int mask = 0);
+    
     unsigned short get_display_width();
     unsigned short get_display_height();
+
 
 private:
     void _cpu_sse_check();
@@ -36,7 +40,7 @@ private:
         unsigned short  height = 0;
     }; 
 
-    IScreenshotMaker*    m_i_screenshot_maker = nullptr;
+    IMultimediaCentre*    m_i_screenshot_maker = nullptr;
     Resolution           m_display_res;
     bool                 m_is_wayland_session = false;
     bool                 m_have_sse_instructions = false;

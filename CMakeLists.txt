@@ -13,7 +13,7 @@ set(CONTR "Controller")
 set(XCB "xcb")
 
 set(APP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
-set(X11SM_PATH "${CMAKE_CURRENT_SOURCE_DIR}/framework/src/x11_screenshot_maker.cpp")
+set(X11SM_PATH "${CMAKE_CURRENT_SOURCE_DIR}/framework/src/x11_multimedia_centre.cpp")
 set(SIMP_PNG_PATH "${CMAKE_CURRENT_SOURCE_DIR}/framework/src/simple_png.cpp")
 set(CONTR_PATH "${CMAKE_CURRENT_SOURCE_DIR}/framework/src/controller.cpp")
 #set(XCB_PATH "/usr/include/xcb/xcb.h")

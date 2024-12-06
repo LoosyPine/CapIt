@@ -1,13 +1,13 @@
-#include "../include/x11_screenshot_maker.hpp"
+#include "../include/x11_multimedia_centre.hpp"
 
-void X11ScreenshotMaker::_xcb_shm_inittialize()
+void X11_MultimediaCentre::_xcb_shm_inittialize()
 {
+    std::cout << (int)XKeysymToKeycode(this->m_display, XK_R) << '\n';
     this->m_connection = xcb_connect(nullptr, nullptr);
-    if (xcb_connection_has_error(this->m_connection)) 
+    if (xcb_connection_has_error(this->m_connection))
     {
-        /* do something on error*/
-        std::cerr << "ERROR\n";
-        exit(0);
+        PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
     }
 
     this->m_setup = xcb_get_setup(this->m_connection);
@@ -17,9 +17,8 @@ void X11ScreenshotMaker::_xcb_shm_inittialize()
     this->m_shmid = shmget(IPC_PRIVATE, this->m_display_width * this->m_display_height * 4, IPC_CREAT | 0777);
     if (this->m_shmid == -1)
     {
-        /* do something on error*/
-        std::cerr << "ERROR\n";
-        exit(0);
+        PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
     }
 
     xcb_shm_attach(this->m_connection, this->m_seg, this->m_shmid, false);
@@ -27,7 +26,8 @@ void X11ScreenshotMaker::_xcb_shm_inittialize()
     this->m_buffer = static_cast<uint8_t*>(shmat(this->m_shmid, nullptr, 0));
 }
 
-void X11ScreenshotMaker::_xcb_shm_create_image()
+
+void X11_MultimediaCentre::_xcb_shm_create_image()
 {
     this->m_cookie = xcb_shm_get_image_unchecked(this->m_connection, this->m_xcb_screen->root, 0, 0, this->m_display_width,
                                                  this->m_display_height, ~0,
@@ -37,7 +37,8 @@ void X11ScreenshotMaker::_xcb_shm_create_image()
     free(xcb_shm_get_image_reply(this->m_connection, this->m_cookie, nullptr));
 }
 
-void X11ScreenshotMaker::initialize()
+
+void X11_MultimediaCentre::initialize()
 {
     this->m_display = XOpenDisplay(getenv("DISPLAY"));
     if(this->m_display == NULL)
@@ -52,19 +53,36 @@ void X11ScreenshotMaker::initialize()
     this->m_display_width = XDisplayWidth(this->m_display, this->m_screen);
 }
 
-//Video part
 
-void X11ScreenshotMaker::start_video()
+void X11_MultimediaCentre::start_video()
 {
-    std::cout << "Start video!\n";
-     _video_initialize();
-     _start_all_threads();
-     _finish_video();
-    std::cout << "End video!\n";
+    std::cout << "\tStart video!\n \tRecording...\n";
+    _video_initialize();
+    _video_start_all_threads();
+    _finish_video();
+    std::cout << "\tEnd video!\n";
 }
 
 
-void X11ScreenshotMaker::_video_initialize()
+void X11_MultimediaCentre::stop_video()
+{
+    this->m_program_state.store(false);
+}
+
+
+void X11_MultimediaCentre::set_trigger_key(int key,  unsigned int mask)
+{
+    XGrabKey(this->m_display,
+             XKeysymToKeycode(this->m_display, key),
+             mask,
+             this->m_root_window,
+             false,
+             GrabModeAsync,
+             GrabModeAsync);
+}
+
+
+void X11_MultimediaCentre::_video_initialize()
 {
     //инициализация xcb-shm
     _xcb_shm_inittialize();
@@ -85,6 +103,7 @@ void X11ScreenshotMaker::_video_initialize()
     this->m_stream = avformat_new_stream(this->m_format_ctx, 0);
     if (!this->m_stream) {
         PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
     }
 
     // Настройка параметров кодека в потоке(st)
@@ -99,18 +118,20 @@ void X11ScreenshotMaker::_video_initialize()
     const AVCodec *pCodec = avcodec_find_encoder(this->m_stream->codecpar->codec_id);
     if (!pCodec) {
         PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
     }
 
     // Выделение памяти для AVCodecContext и установка значения по умолчанию для его полей
     this->m_codec_ctx = avcodec_alloc_context3(pCodec);
     if (!this->m_codec_ctx) {
         PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
     }
 
     // Перенос параметров кодека из AVCodecParameters(st->codecpar) в AVCodecContext(cctx)
     avcodec_parameters_to_context(this->m_codec_ctx, this->m_stream->codecpar);
     // Измнение параметров для кодека
-    this->m_codec_ctx->bit_rate = 5000000;
+    this->m_codec_ctx->bit_rate = 4000000;
     this->m_codec_ctx->width = this->m_display_width;
     this->m_codec_ctx->height = this->m_display_height;
     this->m_codec_ctx->time_base.num = 1;
@@ -133,32 +154,23 @@ void X11ScreenshotMaker::_video_initialize()
     // Инициализация AVCodecContext с использованием заданного AVCodec
     if (avcodec_open2(this->m_codec_ctx, pCodec, NULL) < 0) {
         PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
     }
     // Проверка на флаги(открыт ли какой-либо файл)
     if (!(this->m_format_ctx->flags & AVFMT_NOFILE)) {
         // Открытие выходного файла
         if (avio_open(&this->m_format_ctx->pb, this->m_output_filename, AVIO_FLAG_WRITE) < 0) {
             PRINT_DEBUG_ERROR;
+            exit(EXIT_FAILURE);
         }
     }
     // Выделение частных данных потока и запись заголовка потока в выходной медиафайл
     if (avformat_write_header(this->m_format_ctx, NULL) < 0) {
         PRINT_DEBUG_ERROR;
+        exit(EXIT_FAILURE);
     }
 
-    for(uint8_t i = 0; i < 8; ++i)
-    {
-        this->m_src_img_data[i] = NULL;
-        this->m_scr_img_stride[i] = 0;
-    }
-    this->m_image = XGetImage(this->m_display,
-                              this->m_root_window,
-                              0,
-                              0,
-                              this->m_display_width,
-                              this->m_display_height,
-                              AllPlanes,
-                              ZPixmap);
+    _xlib_get_image();
 
     this->m_src_img_data[0] = this->m_buffer;
     this->m_scr_img_stride[0] = this->m_image->bytes_per_line;
@@ -191,15 +203,9 @@ void X11ScreenshotMaker::_video_initialize()
     this->m_packet = av_packet_alloc();
 }
 
-void X11ScreenshotMaker::_input_key_loop()
+
+inline void X11_MultimediaCentre::_video_input_key_loop()
 {
-    XGrabKey(this->m_display,
-            XKeysymToKeycode(this->m_display, XK_R),
-            ControlMask,
-            this->m_root_window,
-            false,
-            GrabModeAsync,
-            GrabModeAsync);
     XNextEvent(this->m_display, &this->m_event);
     while(true)
     {
@@ -211,25 +217,27 @@ void X11ScreenshotMaker::_input_key_loop()
     }
 }
 
-void X11ScreenshotMaker::_start_all_threads()
+
+void X11_MultimediaCentre::_video_start_all_threads()
 {
-    std::thread key_loop_thr(&X11ScreenshotMaker::_input_key_loop, this);
-    std::thread create_thr(&X11ScreenshotMaker::_create_image_loop, this);
-    std::thread write_thr(&X11ScreenshotMaker::_write_image_loop, this);
+    std::thread key_loop_thr(&X11_MultimediaCentre::_video_input_key_loop, this);
+    std::thread create_thr(&X11_MultimediaCentre::_create_image_loop, this);
+    std::thread write_thr(&X11_MultimediaCentre::_write_image_loop, this);
     key_loop_thr.join();
     create_thr.join();
     write_thr.join();
 }
 
-void X11ScreenshotMaker::_finish_video()
+
+void X11_MultimediaCentre::_finish_video()
 {
-    //FINISH
     // Запись трейлера потока в выходной медиафайл и освобождение частных данных файла.
     av_write_trailer(this->m_format_ctx);
     // Если всё сброшенно, то закрывается io поток
     if (!(this->m_output_format->flags & AVFMT_NOFILE)) {
         if (avio_close(this->m_format_ctx->pb) < 0) {
             PRINT_DEBUG_ERROR;
+            exit(EXIT_FAILURE);
         }
     }
     // Освобождение всей занятой памяти
@@ -241,7 +249,7 @@ void X11ScreenshotMaker::_finish_video()
     avformat_free_context(this->m_format_ctx);
 }
 
-void X11ScreenshotMaker::_create_image_loop()
+void X11_MultimediaCentre::_create_image_loop()
 {
     while(this->m_program_state.load())
     {
@@ -249,18 +257,21 @@ void X11ScreenshotMaker::_create_image_loop()
     }
 }
 
-void X11ScreenshotMaker::_create_image()
+
+void X11_MultimediaCentre::_create_image()
 {
     this->m_create_delta_id = this->m_write_id - this->m_create_id + 1;
     (this->*m_create_throttle[this->m_create_delta_id])();
 }
 
-void X11ScreenshotMaker::_create_fake_func()
+
+void X11_MultimediaCentre::_create_fake_func()
 {
     while(this->m_write_status.load()){}
 }
 
-void X11ScreenshotMaker::_create_core_func()
+
+void X11_MultimediaCentre::_create_core_func()
 {
     this->m_create_status.store(true);
     _xcb_shm_create_image();
@@ -277,7 +288,8 @@ void X11ScreenshotMaker::_create_core_func()
     this->m_create_status.store(false);
 }
 
-void X11ScreenshotMaker::_write_image_loop()
+
+void X11_MultimediaCentre::_write_image_loop()
 {
     while(this->m_program_state.load() || this->m_write_status.load())
     {
@@ -285,19 +297,22 @@ void X11ScreenshotMaker::_write_image_loop()
     }
 }
 
-void X11ScreenshotMaker::_write_image()
+
+void X11_MultimediaCentre::_write_image()
 {
     this->m_write_delta_id = this->m_create_id - this->m_write_id;
     (this->*m_write_throttle[this->m_write_delta_id])();
 }
 
-void X11ScreenshotMaker::_write_fake_func()
+
+void X11_MultimediaCentre::_write_fake_func()
 {
     this->m_write_status.store(false);
     while(this->m_create_status.load()){}
 }
 
-void X11ScreenshotMaker::_write_core_func()
+
+void X11_MultimediaCentre::_write_core_func()
 {
     this->m_write_status.store(true);
     // Инициализация необязательных полей пакета(AVPacket) значениями по умолчанию
@@ -324,29 +339,21 @@ void X11ScreenshotMaker::_write_core_func()
     this->m_video_pts += 1000;
 }
 
-void X11ScreenshotMaker::make_screenshot()
+
+void X11_MultimediaCentre::make_screenshot()
 {
-    XGrabKey(this->m_display,
-            XKeysymToKeycode(this->m_display, XK_Y),
-            ControlMask,
-            this->m_root_window,
-            false,
-            GrabModeAsync,
-            GrabModeAsync);
-
     _key_waiting_loop();
-
-    this->m_image = XGetImage(this->m_display,
-                            DefaultRootWindow(this->m_display),
-                            0,
-                            0,
-                            this->m_display_width,
-                            this->m_display_height,
-                            AllPlanes,
-                            ZPixmap);
+    _xlib_get_image();
 }
 
-inline void X11ScreenshotMaker::_key_waiting_loop()
+
+void X11_MultimediaCentre::make_screenshot_right_now()
+{
+    _xlib_get_image();
+}
+
+
+inline void X11_MultimediaCentre::_key_waiting_loop()
 {
     XNextEvent(this->m_display, &this->m_event);
     while(true)
@@ -358,29 +365,47 @@ inline void X11ScreenshotMaker::_key_waiting_loop()
     }
 }
 
-char* X11ScreenshotMaker::get_screenshot_data()
+
+void X11_MultimediaCentre::_xlib_get_image()
+{
+    this->m_image = XGetImage(this->m_display,
+                              this->m_root_window,
+                              0,
+                              0,
+                              this->m_display_width,
+                              this->m_display_height,
+                              AllPlanes,
+                              ZPixmap);
+}
+
+
+char* X11_MultimediaCentre::get_screenshot_data()
 {
     _check_img_ptr();
     return this->m_image->data;
 }
 
-int X11ScreenshotMaker::get_screenshot_row_bytecount()
+
+int X11_MultimediaCentre::get_screenshot_row_bytecount()
 {
     _check_img_ptr();
     return this->m_image->bytes_per_line;
 }
 
-unsigned short X11ScreenshotMaker::get_display_width()
+
+unsigned short X11_MultimediaCentre::get_display_width()
 {
     return this->m_display_width;
 }
 
-unsigned short X11ScreenshotMaker::get_display_height()
+
+unsigned short X11_MultimediaCentre::get_display_height()
 {
     return this->m_display_height;
 }
 
-void X11ScreenshotMaker::_check_img_ptr()
+
+void X11_MultimediaCentre::_check_img_ptr()
 {
     if(this->m_image == nullptr)
     {
