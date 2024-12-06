@@ -4,16 +4,11 @@
 #include <xcb/xcb.h>
 #include <xcb/shm.h>
 #include <sys/shm.h>
-#include <sys/mman.h>
-#include <xcb/xproto.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <thread>
 #include <atomic>
 #include <vector>
-#include <chrono>
-#include <unistd.h>
-#include <memory>
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 
 extern "C"
 {

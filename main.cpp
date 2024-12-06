@@ -23,7 +23,6 @@ int main(int argc, char* argv[])
     core.session_make_screenshot_right_now();
     core.save_screenshot_png();
 
-    // std::cout << "NAME:" << argv[1] <<  '\n';
     core.set_video_filename(argv[1]);
     core.set_video_fps(atoi(argv[2]));
     core.session_start_video();
