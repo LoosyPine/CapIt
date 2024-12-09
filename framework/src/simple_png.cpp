@@ -66,7 +66,7 @@ void SimplePNG::_initialize_jmpbuf()
 }
 void SimplePNG::save_png()
 {
-    auto start = std::chrono::steady_clock::now();
+    //auto start = std::chrono::steady_clock::now();
     _check_image_data_ptr();
 
     this->m_row_pointers = new png_bytep[this->m_height];
@@ -83,10 +83,9 @@ void SimplePNG::save_png()
     }
 
     png_set_rows(this->m_write_ptr, this->m_info_ptr, this->m_row_pointers);
-    png_write_png(this->m_write_ptr, this->m_info_ptr, PNG_TRANSFORM_BGR, nullptr);
+    png_write_png(this->m_write_ptr,this->m_info_ptr,PNG_TRANSFORM_BGR,nullptr);
     png_write_end(this->m_write_ptr, this->m_info_ptr);
-    auto end = std::chrono::steady_clock::now();
-    std::cout << "SimplePNG::save_png()->Time:" << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl;
+    //auto end = std::chrono::steady_clock::now();
 }
 
 

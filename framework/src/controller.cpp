@@ -22,11 +22,11 @@ void Controller::session_definition()
 
 void Controller::session_initialize(IMultimediaCentre *i_screenshot_maker)
 {
-    this->m_i_multimedia_centre = i_screenshot_maker;
-    this->m_i_multimedia_centre->initialize();
+   this->m_i_multimedia_centre = i_screenshot_maker;
+   this->m_i_multimedia_centre->initialize();
 
-    this->m_display_res.width = this->m_i_multimedia_centre->get_display_width();
-    this->m_display_res.height = this->m_i_multimedia_centre->get_display_height();
+   this->m_display_res.width=this->m_i_multimedia_centre->get_display_width();
+   this->m_display_res.height=this->m_i_multimedia_centre->get_display_height();
 }
 
 
