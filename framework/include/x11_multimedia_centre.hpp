@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <csignal>
 #include <xcb/xcb.h>
 #include <xcb/shm.h>
 #include <sys/shm.h>
@@ -83,6 +84,8 @@ private:
     void _xcb_shm_inittialize();
     void _xcb_shm_create_image();
 
+    void _audio_record_start();
+
     std::vector<AVFrame*>       m_ring_buffer;
     uint8_t*                    m_src_img_data[8] = {NULL};
     int                         m_scr_img_stride[8] = {0};
@@ -101,7 +104,7 @@ private:
     xcb_connection_t*           m_connection = nullptr;
     const xcb_setup_t*          m_setup = nullptr;
     xcb_screen_t*               m_xcb_screen = nullptr;
-    uint64_t                    m_video_pts = 0;
+    double                      m_video_pts = 0;
     int                         m_video_key_code = 0;
     int                         m_screenshot_key_code = 0;
     int                         m_screen = 0;
@@ -114,7 +117,7 @@ private:
     uint8_t                     m_create_id = 1; //head
     uint8_t                     m_write_id = 0; //tail
     uint8_t                     m_size_of_bit_offset = 6;
-    uint8_t                     m_ring_buffer_size = 4;
+    uint8_t                     m_ring_buffer_size = 32;
     std::atomic<bool>           m_metronome_state{true};
     std::atomic<bool>           m_program_state{true};
     std::atomic<bool>           m_create_status{false};

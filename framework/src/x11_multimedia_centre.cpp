@@ -80,6 +80,9 @@ void X11_MultimediaCentre::start_video()
     _video_initialize();
     _video_start_all_threads();
     _finish_video();
+    system("killall ffmpeg");
+    //system("ffmpeg -i testing_video.mp4 -vf 'setpts=1.5*PTS' new_video.mp4");
+    system("ffmpeg -i testing_video.mp4 -i microphone_record.mp3 -c:v copy -c:a aac output.mp4");
     std::cout << "\tEnd video!\n";
 }
 
@@ -169,7 +172,7 @@ void X11_MultimediaCentre::_video_initialize()
     avcodec_parameters_to_context(this->m_codec_ctx, this->m_stream->codecpar);
     
     // Changing the parameters for the codec.
-    this->m_codec_ctx->bit_rate = 4000000;
+    this->m_codec_ctx->bit_rate = 5000000;
     this->m_codec_ctx->width = this->m_display_width;
     this->m_codec_ctx->height = this->m_display_height;
     this->m_codec_ctx->time_base.num = 1;
@@ -297,11 +300,17 @@ void X11_MultimediaCentre::_video_start_all_threads()
     std::thread key_loop_thr(&X11_MultimediaCentre::_video_input_key_loop,this);
     std::thread create_thr(&X11_MultimediaCentre::_create_image_loop, this);
     std::thread write_thr(&X11_MultimediaCentre::_write_image_loop, this);
+    std::thread audio_thr(&X11_MultimediaCentre::_audio_record_start, this);
+    audio_thr.detach();
     key_loop_thr.join();
     create_thr.join();
     write_thr.join();
 }
 
+void X11_MultimediaCentre::_audio_record_start()
+{
+system("ffmpeg -f pulse -i alsa_input.pci-0000_00_1b.0.analog-stereo -ac 1 microphone_record.mp3");
+}
 
 void X11_MultimediaCentre::_finish_video()
 {
@@ -352,8 +361,7 @@ void X11_MultimediaCentre::_create_image()
 
 void X11_MultimediaCentre::_create_fake_func()
 {
-    // Waiting loop.
-    while(this->m_write_status.load()){}
+    //nothing
 }
 
 
@@ -388,7 +396,7 @@ void X11_MultimediaCentre::_create_core_func()
 
 void X11_MultimediaCentre::_write_image_loop()
 {
-    while(this->m_program_state.load() || this->m_write_status.load())
+    while(this->m_program_state.load()|| this->m_write_status.load())
     {
         _write_image();
     }
@@ -411,7 +419,6 @@ void X11_MultimediaCentre::_write_image()
 void X11_MultimediaCentre::_write_fake_func()
 {
     this->m_write_status.store(false);
-    while(this->m_create_status.load()){}
 }
 
 
@@ -430,7 +437,6 @@ void X11_MultimediaCentre::_write_core_func()
     this->m_packet->data = NULL;
     this->m_packet->size = 0;
     this->m_packet->stream_index = m_stream->index;
-    this->m_packet->duration = 0;
     // Transfer the raw frame to the encoder(codec).
     if (avcodec_send_frame(
                         this->m_codec_ctx, m_ring_buffer[this->m_write_id]) < 0)
@@ -444,7 +450,8 @@ void X11_MultimediaCentre::_write_core_func()
         Recording a packet to an output media file,
         ensuring proper interleaving.
         */
-        av_interleaved_write_frame(this->m_format_ctx, m_packet);
+        //av_interleaved_write_frame(this->m_format_ctx, m_packet); // mb slow
+        av_write_frame(this->m_format_ctx, m_packet);
         // Releases the package(returns the default values).
         av_packet_unref(m_packet);
     }
